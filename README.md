@@ -87,6 +87,13 @@ pedirse con `page=1`. El cuaderno se ajustó a ese cambio y por eso los resultad
   integraron mediante una solicitud de extracción.
 - Los mensajes de commit describen la modificación realizada.
 
+## Limitaciones
+
+- La extracción depende de la estructura actual del sitio web de Calzatodo y de la disponibilidad de los bloques JSON-LD utilizados como fuente de datos.
+- Cambios en la organización o nomenclatura de los campos publicados por el sitio podrían requerir ajustes en el cuaderno.
+- El proceso requiere acceso a internet y disponibilidad del sitio web durante la ejecución.
+- Los resultados reflejan la información disponible al momento de la ejecución y pueden variar con el tiempo debido a cambios en el catálogo o en los precios.
+
 ## Alcance
 
 La muestra corresponde a las dos primeras páginas de la categoría en un momento
