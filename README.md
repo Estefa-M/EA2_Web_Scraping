@@ -1,6 +1,5 @@
 # EA2_Web_Scraping
 Evidencia de aprendizaje 2. Optimizando la productividad en el mundo del software
-# EA2 — Extracción de datos de Calzatodo
 
 Este proyecto continúa la primera evidencia de Programación para el Análisis de Datos. El objetivo es organizar los resultados de la extracción y usar Git y GitHub para registrar los cambios del proyecto.
 
