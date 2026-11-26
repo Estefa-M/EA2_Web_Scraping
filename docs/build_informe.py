@@ -69,17 +69,56 @@ def configurar_estilos(doc: Document) -> None:
         estilo.font.bold = True
 
 
+def _campo_pie(parrafo, instruccion: str) -> None:
+    """Inserta un campo de Word (PAGE, NUMPAGES) con el formato del pie.
+
+    El campo se arma con su propio ``w:rPr``: si se deja vacío, Word y
+    LibreOffice le aplican el estilo Normal (Calibri 11, negro) y el número
+    queda más grande y oscuro que el texto que lo rodea.
+    """
+    campo = OxmlElement("w:fldSimple")
+    campo.set(qn("w:instr"), f" {instruccion} ")
+
+    run = OxmlElement("w:r")
+    propiedades = OxmlElement("w:rPr")
+    fuentes = OxmlElement("w:rFonts")
+    for atributo in ("w:ascii", "w:hAnsi", "w:cs"):
+        fuentes.set(qn(atributo), "Calibri")
+    color = OxmlElement("w:color")
+    color.set(qn("w:val"), "5B6776")
+    tamano = OxmlElement("w:sz")
+    tamano.set(qn("w:val"), "16")  # 8 pt = 16 medios puntos
+    propiedades.append(fuentes)
+    propiedades.append(color)
+    propiedades.append(tamano)
+    run.append(propiedades)
+
+    texto = OxmlElement("w:t")
+    texto.text = "1"
+    run.append(texto)
+    campo.append(run)
+    parrafo._p.append(campo)
+
+
 def pie_de_pagina(doc: Document, texto: str) -> None:
-    """Pie con el nombre del curso y el número de página."""
+    """Pie con el nombre del curso y «Página X de Y», todo con el mismo estilo."""
     for seccion in doc.sections:
         parrafo = seccion.footer.paragraphs[0]
         parrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        corrida = parrafo.add_run(texto + "  ·  Página ")
+        parrafo.paragraph_format.space_before = Pt(0)
+        parrafo.paragraph_format.space_after = Pt(0)
+
+        corrida = parrafo.add_run(texto + " · Página ")
+        corrida.font.name = "Calibri"
         corrida.font.size = Pt(8)
         corrida.font.color.rgb = GRIS
-        campo = OxmlElement("w:fldSimple")
-        campo.set(qn("w:instr"), "PAGE")
-        parrafo._p.append(campo)
+        _campo_pie(parrafo, "PAGE")
+
+        corrida = parrafo.add_run(" de ")
+        corrida.font.name = "Calibri"
+        corrida.font.size = Pt(8)
+        corrida.font.color.rgb = GRIS
+        _campo_pie(parrafo, "NUMPAGES")
 
 
 def parrafo(doc: Document, texto: str, cursiva: bool = False, tamano: int = 11) -> None:
