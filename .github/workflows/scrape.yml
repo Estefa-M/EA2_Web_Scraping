@@ -30,7 +30,7 @@ jobs:
       url: ${{ steps.despliegue.outputs.page_url }}
     steps:
       - name: Descargar el repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Comprobar la vigencia de la automatización
         run: |
@@ -42,7 +42,7 @@ jobs:
           echo "Ejecución válida: $HOY (límite $EA3_VIGENCIA_HASTA)."
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -69,13 +69,29 @@ jobs:
           git push https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git HEAD:main
 
       - name: Preparar GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Empaquetar el sitio actualizado
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: report
 
+      - name: Esperar a que el artefacto esté disponible
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for intento in $(seq 1 12); do
+            if gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+                --jq '.artifacts[] | select(.name == "github-pages") | .id' | grep -q .; then
+              echo "Artefacto github-pages disponible (intento ${intento})."
+              exit 0
+            fi
+            echo "Intento ${intento}: el artefacto aún no aparece; espero 10 s."
+            sleep 10
+          done
+          echo "El artefacto no apareció en dos minutos." >&2
+          exit 1
+
       - name: Publicar el tablero
         id: despliegue
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

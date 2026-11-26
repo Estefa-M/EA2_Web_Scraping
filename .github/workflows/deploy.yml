@@ -22,8 +22,8 @@ jobs:
     name: Verificar antes de desplegar
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -46,8 +46,8 @@ jobs:
       name: github-pages
       url: ${{ steps.despliegue.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -62,13 +62,32 @@ jobs:
         run: PYTHONPATH=src python -m ea3.pipeline --desde-csv data/productos.csv
 
       - name: Preparar GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Empaquetar el sitio
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: report
 
+      # El API de artefactos tarda unos segundos en indexar el archivo recién
+      # subido. Sin esta espera, deploy-pages consulta y recibe "Found 0
+      # artifact(s)" aunque la subida haya terminado bien.
+      - name: Esperar a que el artefacto esté disponible
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for intento in $(seq 1 12); do
+            if gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+                --jq '.artifacts[] | select(.name == "github-pages") | .id' | grep -q .; then
+              echo "Artefacto github-pages disponible (intento ${intento})."
+              exit 0
+            fi
+            echo "Intento ${intento}: el artefacto aún no aparece; espero 10 s."
+            sleep 10
+          done
+          echo "El artefacto no apareció en dos minutos." >&2
+          exit 1
+
       - name: Desplegar
         id: despliegue
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
