@@ -132,21 +132,41 @@ def tabla(doc: Document, encabezados: list[str], filas: list[list[str]], anchos:
 
 
 def figura(doc: Document, ruta: Path, leyenda: str, ancho: float = 16.0) -> bool:
+    """Inserta imagen + leyenda dentro de una tabla sin bordes de una fila.
+
+    Una tabla de una sola fila con ``cantSplit`` no se parte entre páginas,
+    así que la imagen y su leyenda quedan siempre juntas (Word y LibreOffice
+    ignoran ``keep_with_next`` en párrafos que solo contienen una imagen).
+    """
     if not ruta.exists():
         return False
-    doc.add_picture(str(ruta), width=Cm(ancho))
-    imagen = doc.paragraphs[-1]
-    imagen.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    # La imagen y su leyenda viajan juntas: si no cabe, ambas pasan de página.
-    imagen.paragraph_format.keep_with_next = True
-    imagen.paragraph_format.keep_together = True
-    caption = doc.add_paragraph()
+    tabla_figura = doc.add_table(rows=1, cols=1)
+    tabla_figura.alignment = WD_TABLE_ALIGNMENT.CENTER
+    fila = tabla_figura.rows[0]
+    sin_corte = OxmlElement("w:cantSplit")
+    fila._tr.get_or_add_trPr().append(sin_corte)
+
+    bordes = OxmlElement("w:tblBorders")
+    for lado in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        borde = OxmlElement(f"w:{lado}")
+        borde.set(qn("w:val"), "none")
+        bordes.append(borde)
+    tabla_figura._tbl.tblPr.append(bordes)
+
+    celda = fila.cells[0]
+    celda.width = Cm(ancho)
+    parrafo_imagen = celda.paragraphs[0]
+    parrafo_imagen.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    parrafo_imagen.add_run().add_picture(str(ruta), width=Cm(ancho))
+
+    caption = celda.add_paragraph()
     caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    caption.paragraph_format.keep_together = True
     run = caption.add_run(leyenda)
     run.italic = True
     run.font.size = Pt(8.5)
     run.font.color.rgb = GRIS
+
+    doc.add_paragraph()
     return True
 
 
@@ -653,7 +673,7 @@ jobs:
     ]
     faltantes = []
     for archivo, leyenda in figuras:
-        if not figura(doc, CAPTURAS / archivo, leyenda):
+        if not figura(doc, CAPTURAS / archivo, leyenda, ancho=13.5):
             faltantes.append(archivo)
     if faltantes:
         parrafo(
