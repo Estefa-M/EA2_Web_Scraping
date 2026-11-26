@@ -1,0 +1,44 @@
+{
+  "total_productos": 40,
+  "marcas_unicas": 3,
+  "precio_minimo": 107920,
+  "precio_maximo": 279920,
+  "precio_promedio": 151168,
+  "precio_mediana": 111920,
+  "disponibles": 40,
+  "completitud_pct": 100.0,
+  "top_marcas": [
+    {
+      "marca": "Throwing",
+      "cantidad": 27
+    },
+    {
+      "marca": "Skechers",
+      "cantidad": 8
+    },
+    {
+      "marca": "New balance",
+      "cantidad": 5
+    }
+  ],
+  "rangos_precio": [
+    {
+      "rango": "Menos de $150.000",
+      "cantidad": 27
+    },
+    {
+      "rango": "$150.000 – $250.000",
+      "cantidad": 11
+    },
+    {
+      "rango": "$250.000 – $350.000",
+      "cantidad": 2
+    },
+    {
+      "rango": "$350.000 o más",
+      "cantidad": 0
+    }
+  ],
+  "fecha_extraccion": "2026-11-26T16:00:16-05:00",
+  "categoria": "https://www.calzatodo.com.co/es/mujeres/tenis/deportivo"
+}

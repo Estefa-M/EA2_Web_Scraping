@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Observatorio de precios · Calzatodo</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --tinta: #1b2430;
+      --gris: #5b6776;
+      --linea: #e3e8ef;
+      --fondo: #f5f7fa;
+      --azul: #1d4ed8;
+      --verde: #0f7b57;
+      --ambar: #b45309;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--fondo);
+      color: var(--tinta);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      line-height: 1.5;
+    }
+    .contenedor { max-width: 1120px; margin: 0 auto; padding: 28px 20px 48px; }
+    header.portada {
+      background: linear-gradient(135deg, #10233f, #1d4ed8);
+      color: #fff;
+      border-radius: 18px;
+      padding: 28px 30px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 10px 28px rgba(16, 35, 63, .18);
+    }
+    header.portada h1 { margin: 0 0 6px; font-size: 1.65rem; }
+    header.portada p { margin: 0; opacity: .85; font-size: .95rem; }
+    .sello {
+      background: rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: .82rem;
+      white-space: nowrap;
+    }
+    .rejilla { display: grid; gap: 16px; margin-top: 20px; }
+    .rejilla > * { min-width: 0; }
+    .kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+    .tarjeta {
+      background: #fff;
+      border: 1px solid var(--linea);
+      border-radius: 14px;
+      padding: 18px 20px;
+    }
+    .tarjeta .rotulo {
+      margin: 0 0 6px;
+      color: var(--gris);
+      font-size: .76rem;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .tarjeta .valor { margin: 0; font-size: 1.75rem; font-weight: 800; }
+    .tarjeta .nota { margin: 4px 0 0; color: var(--gris); font-size: .8rem; }
+    .graficas { grid-template-columns: 1.4fr 1fr; }
+    @media (max-width: 820px) { .graficas { grid-template-columns: 1fr; } }
+    .graficas .tarjeta h2, .tabla-card h2 {
+      margin: 0 0 14px;
+      font-size: 1rem;
+      letter-spacing: .01em;
+    }
+    .lienzo { position: relative; height: 280px; width: 100%; }
+    .lienzo canvas { max-width: 100% !important; }
+    .tabla-card { margin-top: 20px; }
+    .barra {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .barra input {
+      width: min(360px, 100%);
+      padding: 10px 14px;
+      border: 1px solid var(--linea);
+      border-radius: 10px;
+      font-size: .92rem;
+    }
+    .barra input:focus { outline: 2px solid #bfdbfe; border-color: var(--azul); }
+    .tabla-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    thead th {
+      text-align: left;
+      font-size: .74rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--gris);
+      border-bottom: 2px solid var(--linea);
+      padding: 10px 12px;
+    }
+    tbody td { padding: 11px 12px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+    tbody tr:hover { background: #f8fafc; }
+    .sku {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: .8rem;
+      background: #eef2f7;
+      border-radius: 6px;
+      padding: 2px 7px;
+      color: #344055;
+    }
+    .precio { font-weight: 700; white-space: nowrap; }
+    .chip {
+      display: inline-block;
+      font-size: .74rem;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 3px 10px;
+    }
+    .chip.disponible { background: #e7f6ef; color: var(--verde); }
+    .chip.agotado { background: #fdecea; color: #b42318; }
+    .chip.otro { background: #fef3c7; color: var(--ambar); }
+    a { color: var(--azul); }
+    footer {
+      margin-top: 26px;
+      color: var(--gris);
+      font-size: .82rem;
+      border-top: 1px solid var(--linea);
+      padding-top: 16px;
+    }
+    footer p { margin: 4px 0; }
+    .vacio { color: var(--gris); padding: 18px 0; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="contenedor">
+    <header class="portada">
+      <div>
+        <h1>Observatorio de precios · Calzatodo</h1>
+        <p>Tenis deportivos para mujer · datos extraídos del catálogo público</p>
+      </div>
+      <div class="sello">Actualizado: 26/11/2026 04:00 PM (hora Colombia)</div>
+    </header>
+
+    <section class="rejilla kpis" aria-label="Indicadores del catálogo">
+      <article class="tarjeta">
+        <p class="rotulo">Publicaciones</p>
+        <p class="valor">40</p>
+        <p class="nota">referencias únicas</p>
+      </article>
+      <article class="tarjeta">
+        <p class="rotulo">Marcas</p>
+        <p class="valor">3</p>
+        <p class="nota">en la muestra</p>
+      </article>
+      <article class="tarjeta">
+        <p class="rotulo">Precio más bajo</p>
+        <p class="valor">$ 107.920</p>
+        <p class="nota">de una publicación</p>
+      </article>
+      <article class="tarjeta">
+        <p class="rotulo">Precio más alto</p>
+        <p class="valor">$ 279.920</p>
+        <p class="nota">de una publicación</p>
+      </article>
+      <article class="tarjeta">
+        <p class="rotulo">Precio promedio</p>
+        <p class="valor">$ 151.168</p>
+        <p class="nota">mediana $ 111.920</p>
+      </article>
+      <article class="tarjeta">
+        <p class="rotulo">Completitud</p>
+        <p class="valor">100.0 %</p>
+        <p class="nota">campos diligenciados</p>
+      </article>
+    </section>
+
+    <section class="rejilla graficas">
+      <article class="tarjeta">
+        <h2>Publicaciones por marca</h2>
+        <div class="lienzo"><canvas id="graficaMarcas" aria-label="Publicaciones por marca"></canvas></div>
+      </article>
+      <article class="tarjeta">
+        <h2>Distribución por rango de precio</h2>
+        <div class="lienzo"><canvas id="graficaRangos" aria-label="Distribución por rango de precio"></canvas></div>
+      </article>
+    </section>
+
+    <section class="tarjeta tabla-card">
+      <div class="barra">
+        <h2>Explorador de publicaciones</h2>
+        <input id="buscador" type="search" placeholder="Buscar por producto, marca o referencia…" aria-label="Buscar publicaciones">
+      </div>
+      <div class="tabla-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Marca</th>
+              <th>Referencia</th>
+              <th>Precio</th>
+              <th>Estado</th>
+              <th>Enlace</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo">
+            
+            <tr data-busqueda="tenis deportivo de mujer skechers 117863wlv skechers 461841">
+              <td>Tenis Deportivo de Mujer Skechers 117863wlv</td>
+              <td>Skechers</td>
+              <td><span class="sku">461841</span></td>
+              <td class="precio">$ 239.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-117863wlv-28121000210/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer skechers 117704bbk skechers 461799">
+              <td>Tenis Deportivo de Mujer Skechers 117704bbk</td>
+              <td>Skechers</td>
+              <td><span class="sku">461799</span></td>
+              <td class="precio">$ 199.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-117704bbk-28121000203/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer skechers 117679ofwt skechers 461787">
+              <td>Tenis Deportivo de Mujer Skechers 117679ofwt</td>
+              <td>Skechers</td>
+              <td><span class="sku">461787</span></td>
+              <td class="precio">$ 229.900</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-117679ofwt-28121000201/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer skechers 117861ltmv skechers 461835">
+              <td>Tenis Deportivo de Mujer Skechers 117861ltmv</td>
+              <td>Skechers</td>
+              <td><span class="sku">461835</span></td>
+              <td class="precio">$ 249.900</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-117861ltmv-28121000209/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer skechers 117736wht skechers 461817">
+              <td>Tenis Deportivo de Mujer Skechers 117736wht</td>
+              <td>Skechers</td>
+              <td><span class="sku">461817</span></td>
+              <td class="precio">$ 223.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-117736wht-28121000206/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer skechers 117759wbl skechers 461829">
+              <td>Tenis Deportivo de Mujer Skechers 117759wbl</td>
+              <td>Skechers</td>
+              <td><span class="sku">461829</span></td>
+              <td class="precio">$ 199.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-117759wbl-28121000208/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer skechers 117736blk skechers 461811">
+              <td>Tenis Deportivo de Mujer Skechers 117736blk</td>
+              <td>Skechers</td>
+              <td><span class="sku">461811</span></td>
+              <td class="precio">$ 223.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-117736blk-28121000205/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer skechers 117759ntol skechers 461823">
+              <td>Tenis Deportivo de Mujer Skechers 117759ntol</td>
+              <td>Skechers</td>
+              <td><span class="sku">461823</span></td>
+              <td class="precio">$ 199.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-117759ntol-28121000207/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .aa5133w throwing 451565">
+              <td>Tenis Deportivo de Mujer Throwing .aa5133w</td>
+              <td>Throwing</td>
+              <td><span class="sku">451565</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-aa5133w-712900107/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .aa5133w throwing 451564">
+              <td>Tenis Deportivo de Mujer Throwing .aa5133w</td>
+              <td>Throwing</td>
+              <td><span class="sku">451564</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-aa5133w-712900107/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .ae6060w throwing 451589">
+              <td>Tenis Deportivo de Mujer Throwing .ae6060w</td>
+              <td>Throwing</td>
+              <td><span class="sku">451589</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-ae6060w-712900109/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .ae6060w throwing 451588">
+              <td>Tenis Deportivo de Mujer Throwing .ae6060w</td>
+              <td>Throwing</td>
+              <td><span class="sku">451588</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-ae6060w-712900109/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .au52830w eco throwing 451576">
+              <td>Tenis Deportivo de Mujer Throwing .au52830w eco</td>
+              <td>Throwing</td>
+              <td><span class="sku">451576</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-au52830w-eco-712900108/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .au52830w eco throwing 451577">
+              <td>Tenis Deportivo de Mujer Throwing .au52830w eco</td>
+              <td>Throwing</td>
+              <td><span class="sku">451577</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-au52830w-eco-712900108/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing . au52199w throwing 450288">
+              <td>Tenis Deportivo de Mujer Throwing . au52199w</td>
+              <td>Throwing</td>
+              <td><span class="sku">450288</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis--au52199w-712900103/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing . au52199w throwing 450289">
+              <td>Tenis Deportivo de Mujer Throwing . au52199w</td>
+              <td>Throwing</td>
+              <td><span class="sku">450289</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis--au52199w-712900103/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing . aw54154w throwing 450312">
+              <td>Tenis Deportivo de Mujer Throwing . aw54154w</td>
+              <td>Throwing</td>
+              <td><span class="sku">450312</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis--aw54154w-712900105/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing . aw54154w throwing 450313">
+              <td>Tenis Deportivo de Mujer Throwing . aw54154w</td>
+              <td>Throwing</td>
+              <td><span class="sku">450313</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis--aw54154w-712900105/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing . af56591weco throwing 450301">
+              <td>Tenis Deportivo de Mujer Throwing . af56591weco</td>
+              <td>Throwing</td>
+              <td><span class="sku">450301</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis--af56591weco-712900104/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing . af56591weco throwing 450300">
+              <td>Tenis Deportivo de Mujer Throwing . af56591weco</td>
+              <td>Throwing</td>
+              <td><span class="sku">450300</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis--af56591weco-712900104/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer new balance bbw80wms new balance 425391">
+              <td>Tenis Deportivo de Mujer New balance bbw80wms</td>
+              <td>New balance</td>
+              <td><span class="sku">425391</span></td>
+              <td class="precio">$ 249.900</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-bbw80wms-2712100051/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .eg25m-010 throwing 441407">
+              <td>Tenis Deportivo de Mujer Throwing .eg25m-010</td>
+              <td>Throwing</td>
+              <td><span class="sku">441407</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-eg25m-010-712900098/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .eg25m-010 throwing 441408">
+              <td>Tenis Deportivo de Mujer Throwing .eg25m-010</td>
+              <td>Throwing</td>
+              <td><span class="sku">441408</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-eg25m-010-712900098/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .aa41073w throwing 441607">
+              <td>Tenis Deportivo de Mujer Throwing .aa41073w</td>
+              <td>Throwing</td>
+              <td><span class="sku">441607</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-aa41073w-712900100/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer new balance w3738x0 new balance 444468">
+              <td>Tenis Deportivo de Mujer New balance w3738x0</td>
+              <td>New balance</td>
+              <td><span class="sku">444468</span></td>
+              <td class="precio">$ 279.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-w3738x0-2712100074/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer new balance w460946 new balance 444450">
+              <td>Tenis Deportivo de Mujer New balance w460946</td>
+              <td>New balance</td>
+              <td><span class="sku">444450</span></td>
+              <td class="precio">$ 255.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-w460946-2712100071/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer new balance w4139i6 new balance 444456">
+              <td>Tenis Deportivo de Mujer New balance w4139i6</td>
+              <td>New balance</td>
+              <td><span class="sku">444456</span></td>
+              <td class="precio">$ 239.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-w4139i6-2712100072/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer new balance w4137rk new balance 444462">
+              <td>Tenis Deportivo de Mujer New balance w4137rk</td>
+              <td>New balance</td>
+              <td><span class="sku">444462</span></td>
+              <td class="precio">$ 239.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-w4137rk-2712100073/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .af52189w throwing 439076">
+              <td>Tenis Deportivo de Mujer Throwing .af52189w</td>
+              <td>Throwing</td>
+              <td><span class="sku">439076</span></td>
+              <td class="precio">$ 107.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-af52189w-712900090/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .af52189w throwing 439077">
+              <td>Tenis Deportivo de Mujer Throwing .af52189w</td>
+              <td>Throwing</td>
+              <td><span class="sku">439077</span></td>
+              <td class="precio">$ 107.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-af52189w-712900090/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .aa5578w throwing 439100">
+              <td>Tenis Deportivo de Mujer Throwing .aa5578w</td>
+              <td>Throwing</td>
+              <td><span class="sku">439100</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-aa5578w-712900092/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing . aw40204w throwing 439403">
+              <td>Tenis Deportivo de Mujer throwing . aw40204w</td>
+              <td>Throwing</td>
+              <td><span class="sku">439403</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis--aw40204w-712900093/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing . aw40204w throwing 439402">
+              <td>Tenis Deportivo de Mujer throwing . aw40204w</td>
+              <td>Throwing</td>
+              <td><span class="sku">439402</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis--aw40204w-712900093/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .aa40548w throwing 441263">
+              <td>Tenis Deportivo de Mujer Throwing .aa40548w</td>
+              <td>Throwing</td>
+              <td><span class="sku">441263</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-aa40548w-712900097/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .aa40548w throwing 441264">
+              <td>Tenis Deportivo de Mujer Throwing .aa40548w</td>
+              <td>Throwing</td>
+              <td><span class="sku">441264</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-aa40548w-712900097/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing . aa40548w throwing 439427">
+              <td>Tenis Deportivo de Mujer throwing . aa40548w</td>
+              <td>Throwing</td>
+              <td><span class="sku">439427</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis--aa40548w-712900095/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing . aa40548w throwing 439426">
+              <td>Tenis Deportivo de Mujer throwing . aa40548w</td>
+              <td>Throwing</td>
+              <td><span class="sku">439426</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis--aa40548w-712900095/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .aa50127w throwing 441631">
+              <td>Tenis Deportivo de Mujer Throwing .aa50127w</td>
+              <td>Throwing</td>
+              <td><span class="sku">441631</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-aa50127w-712900102/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .aa50127w throwing 441632">
+              <td>Tenis Deportivo de Mujer Throwing .aa50127w</td>
+              <td>Throwing</td>
+              <td><span class="sku">441632</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-aa50127w-712900102/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+            <tr data-busqueda="tenis deportivo de mujer throwing .aa5012w throwing 439089">
+              <td>Tenis Deportivo de Mujer Throwing .aa5012w</td>
+              <td>Throwing</td>
+              <td><span class="sku">439089</span></td>
+              <td class="precio">$ 111.920</td>
+              <td>
+                
+                <span class="chip disponible">Disponible</span>
+                
+              </td>
+              <td><a href="https://www.calzatodo.com.co/tenis-aa5012w-712900091/p" target="_blank" rel="noopener">Ver producto</a></td>
+            </tr>
+            
+          </tbody>
+        </table>
+        <p id="sinResultados" class="vacio" hidden>No hay publicaciones que coincidan con la búsqueda.</p>
+      </div>
+    </section>
+
+    <footer>
+      <p><strong>Fuente:</strong> <a href="https://www.calzatodo.com.co/es/mujeres/tenis/deportivo" target="_blank" rel="noopener">categoría de tenis deportivos para mujer de Calzatodo</a>.</p>
+      <p><strong>Cómo se actualiza:</strong> un workflow de GitHub Actions ejecuta la extracción y vuelve a generar este tablero cada miércoles; el repositorio guarda el histórico de commits con los datos y las métricas. Ventana de automatización del curso: hasta el 2026-12-09.</p>
+      <p><strong>Código y documentación:</strong> <a href="https://github.com/Estefa-M/EA2_Web_Scraping" target="_blank" rel="noopener">https://github.com/Estefa-M/EA2_Web_Scraping</a></p>
+    </footer>
+  </div>
+
+  <script>
+    const marcas = [{"cantidad": 27, "marca": "Throwing"}, {"cantidad": 8, "marca": "Skechers"}, {"cantidad": 5, "marca": "New balance"}];
+    const rangos = [{"cantidad": 27, "rango": "Menos de $150.000"}, {"cantidad": 11, "rango": "$150.000 \u2013 $250.000"}, {"cantidad": 2, "rango": "$250.000 \u2013 $350.000"}, {"cantidad": 0, "rango": "$350.000 o m\u00e1s"}];
+
+    new Chart(document.getElementById("graficaMarcas"), {
+      type: "bar",
+      data: {
+        labels: marcas.map(m => m.marca),
+        datasets: [{
+          data: marcas.map(m => m.cantidad),
+          backgroundColor: "#1d4ed8",
+          borderRadius: 8,
+          maxBarThickness: 46
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "#eef2f7" } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+
+    new Chart(document.getElementById("graficaRangos"), {
+      type: "doughnut",
+      data: {
+        labels: rangos.map(r => r.rango),
+        datasets: [{
+          data: rangos.map(r => r.cantidad),
+          backgroundColor: ["#0f7b57", "#1d4ed8", "#f59e0b", "#b42318"],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "58%",
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 12, padding: 14 } } }
+      }
+    });
+
+    const buscador = document.getElementById("buscador");
+    const filas = Array.from(document.querySelectorAll("#cuerpo tr"));
+    const aviso = document.getElementById("sinResultados");
+
+    buscador.addEventListener("input", () => {
+      const termino = buscador.value.trim().toLowerCase();
+      let visibles = 0;
+      filas.forEach(fila => {
+        const coincide = fila.dataset.busqueda.includes(termino);
+        fila.hidden = !coincide;
+        if (coincide) visibles += 1;
+      });
+      aviso.hidden = visibles > 0;
+    });
+  </script>
+</body>
+</html>

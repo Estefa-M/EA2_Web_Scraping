@@ -1,0 +1,43 @@
+name: Integración continua (calidad)
+
+# Se ejecuta en cada push y en cada pull request: si el código no pasa el
+# analizador, las pruebas o las reglas de calidad de los datos, el check
+# queda en rojo y el cambio no debería integrarse a main.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  calidad:
+    name: Análisis, pruebas y validación del dataset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Analizar el estilo y los errores evidentes (Ruff)
+        run: ruff check .
+
+      - name: Ejecutar las pruebas unitarias (Pytest)
+        run: pytest -q
+
+      - name: Validar la calidad del dataset versionado
+        env:
+          # Variables del repositorio: si no existen, el código usa 2 páginas.
+          EA3_PAGES: ${{ vars.EA3_PAGES || '2' }}
+        run: PYTHONPATH=src python -m ea3.pipeline --check

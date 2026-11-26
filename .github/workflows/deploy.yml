@@ -1,0 +1,76 @@
+name: Despliegue del tablero (CD)
+
+# Cada push a main pasa otra vez por las pruebas y, solo si quedan en verde,
+# publica el tablero en GitHub Pages. El entorno queda asociado a la URL
+# pública que GitHub muestra en el job y en la pestaña Deployments.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  calidad:
+    name: Verificar antes de desplegar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Analizar el código
+        run: ruff check .
+      - name: Ejecutar las pruebas
+        run: pytest -q
+      - name: Validar el dataset
+        run: PYTHONPATH=src python -m ea3.pipeline --check
+
+  desplegar:
+    name: Publicar en GitHub Pages
+    needs: calidad
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Regenerar el tablero a partir de los datos versionados
+        env:
+          EA3_PAGES: ${{ vars.EA3_PAGES || '2' }}
+        run: PYTHONPATH=src python -m ea3.pipeline --desde-csv data/productos.csv
+
+      - name: Preparar GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Empaquetar el sitio
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: report
+
+      - name: Desplegar
+        id: despliegue
+        uses: actions/deploy-pages@v4

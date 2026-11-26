@@ -1,109 +1,205 @@
-# EA2_Web_Scraping
+# Observatorio de precios de Calzatodo
 
-Proyecto de extracción de datos de la categoría de tenis deportivos para mujer de
-[Calzatodo](https://www.calzatodo.com.co/es/mujeres/tenis/deportivo), con control de
-versiones en GitHub.
+Proyecto del curso **Programación para el Análisis de Datos** de la Institución
+Universitaria Digital de Antioquia. Extrae el catálogo público de tenis deportivos
+para mujer de [Calzatodo](https://www.calzatodo.com.co/es/mujeres/tenis/deportivo),
+lo valida, lo publica como tablero web y automatiza todo el ciclo con
+**GitHub Actions** (integración continua, entrega continua y extracción programada).
 
-**Evidencia de aprendizaje 2** — Programación para el Análisis de Datos
-Universidad Digital de Antioquia
+**Evidencia de aprendizaje 3** — Optimización de procesos de desarrollo.
+Continúa las evidencias 1 y 2, que siguen en el repositorio como historial.
 
-## Integrantes
+**Integrantes**
 
 - Estefanía Martínez Guzmán
 - Carlos Andrés Osorio Agudelo
 - Valentina Pérez Flórez
 
-## Qué hace el proyecto
+---
 
-El cuaderno consulta las dos primeras páginas de la categoría, localiza los bloques
-JSON-LD de tipo `ItemList` que publica el sitio y extrae, de cada publicación, el
-nombre, la marca, la referencia, el precio mínimo, el precio máximo, la moneda y la
-dirección del producto. Después elimina las publicaciones repetidas por dirección,
-convierte los precios a valores numéricos y exporta el resultado a un CSV.
+## 1. Introducción
 
-La extracción se apoya en `requests`, `BeautifulSoup`, `json` y `pandas`.
+Comparar precios de un catálogo a mano es lento y se desactualiza el mismo día.
+Este proyecto automatiza esa tarea: un scraper lee las publicaciones, un pipeline
+las limpia y calcula indicadores, y un tablero web muestra el resultado sin que
+nadie tenga que abrir un cuaderno.
 
-## Contenido del repositorio
+La entrega no se queda en el script. Lo que se evalúa es el **flujo completo**:
+el mismo comando corre en el portátil y en GitHub, las pruebas frenan un cambio
+roto antes de llegar a `main`, el tablero se publica solo y una ejecución semanal
+mantiene los datos al día con un commit automático. Es el ciclo que la unidad
+llama *optimización de procesos de desarrollo*: menos pasos manuales, más
+verificación automática y un despliegue repetible.
 
-| Archivo | Descripción |
+## 2. Qué hay en el repositorio
+
+| Ruta | Para qué sirve |
 |---|---|
-| `calzatodo_ea2.ipynb` | Cuaderno con la extracción, la validación de datos y el flujo de Git |
-| `calzatodo_tenis_deportivos_mujer.csv` | Resultados de la última ejecución (26 publicaciones) |
-| `README.md` | Este documento |
+| `src/ea3/config.py` | Variables de entorno y rutas del proyecto |
+| `src/ea3/scraper.py` | Descarga las páginas y lee el bloque JSON-LD `ItemList` |
+| `src/ea3/transform.py` | Limpieza, reglas de calidad y métricas |
+| `src/ea3/report.py` | Genera el tablero HTML |
+| `src/ea3/pipeline.py` | Orquestador de la línea de comandos |
+| `tests/` | Pruebas unitarias con Pytest y un recorte real de la página |
+| `.github/workflows/ci.yml` | Integración continua: Ruff, Pytest y validación del dataset |
+| `.github/workflows/deploy.yml` | Entrega continua: publica el tablero en GitHub Pages |
+| `.github/workflows/scrape.yml` | Extracción programada semanal con commit automático |
+| `data/productos.csv` | Última ejecución del catálogo (40 publicaciones) |
+| `data/metricas.json` | Cifras calculadas, consumidas por el informe |
+| `report/index.html` | Tablero publicado |
+| `notebooks/Osorio_Carlos_Actividad_EA3.ipynb` | Cuaderno de la evidencia, con salidas |
+| `docs/Osorio_Carlos_Actividad_EA3.pdf` | Informe de la actividad |
+| `calzatodo_ea2.ipynb` | Evidencia 2: extracción y control de versiones |
+| `calzatodo_tenis_deportivos_mujer.csv` | Resultado de la Evidencia 2 (26 publicaciones) |
 
-## Requisitos
+## 3. Requisitos e instalación
 
 - Python 3.11 o superior
-- `requests`, `beautifulsoup4`, `pandas`
+- Las dependencias están en `requirements.txt`
 
 ```bash
-pip install requests beautifulsoup4 pandas
+git clone https://github.com/Estefa-M/EA2_Web_Scraping.git
+cd EA2_Web_Scraping
+python -m venv .venv
+source .venv/bin/activate          # En Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-## Cómo ejecutar
+Las variables de entorno son opcionales: el código trae valores por defecto.
+Para cambiarlas, copie `.env.example` como `.env` o expórtelas en la terminal.
 
-1. Abrir `calzatodo_ea2.ipynb` en Google Colab o en Jupyter.
-2. Ejecutar las celdas en orden.
-
-El cuaderno genera `calzatodo_tenis_deportivos_mujer.csv` en la carpeta de trabajo y,
-cuando se ejecuta en Colab, lo descarga automáticamente.
-
-### Publicar los resultados en GitHub
-
-Las celdas de la sección 5 clonan el repositorio, copian el CSV, registran el cambio
-con un commit y lo publican en la rama `main`.
-
-La clonación es idempotente: si la carpeta ya existe se reutiliza, así que el cuaderno
-puede ejecutarse varias veces sin errores. Para el `git push` se requiere un token de
-acceso personal guardado como secreto `GITHUB_TOKEN` en Colab; la celda lo lee desde
-los secretos y no lo escribe en el cuaderno ni en el repositorio.
-
-## Resultados
-
-La última ejecución descargó 40 registros y quedaron **26 publicaciones únicas**, sin
-valores faltantes en las siete columnas. Los precios se ubicaron entre 134.900 y
-349.900 COP.
-
-| Métrica | Meta | Resultado |
+| Variable | Para qué sirve | Por defecto |
 |---|---|---|
-| Completitud de campos | ≥ 95 % | 100 % (182/182 celdas) |
-| Publicaciones con dirección única | 100 % | 100 % (26/26) |
-| Precios almacenados como número | 100 % | 100 % |
-| Respuestas HTTP distintas de 200 | 0 | 0 |
-| Ejecución sin celdas con error | 1 | 1 |
+| `EA3_BASE_URL` | Categoría que se extrae | tenis deportivo para mujer |
+| `EA3_PAGES` | Páginas que se recorren | `2` |
+| `EA3_DELAY_SEG` | Pausa entre peticiones | `2.0` |
+| `EA3_TIMEOUT_SEG` | Tiempo máximo por petición | `30` |
+| `EA3_REINTENTOS` | Reintentos por página | `3` |
+| `EA3_VIGENCIA_HASTA` | Fin de la automatización programada | `2026-12-09` |
 
-## Nota sobre la paginación
+## 4. Uso
 
-En la primera evidencia la página uno se solicitaba sin el parámetro `page`, porque la
-dirección base de la categoría entregaba el bloque `ItemList`. El sitio cambió ese
-comportamiento: hoy la dirección base ya no incluye el bloque y la página uno debe
-pedirse con `page=1`. El cuaderno se ajustó a ese cambio y por eso los resultados de la
-última ejecución no coinciden cifra a cifra con los de la primera entrega.
+```bash
+# Extraer, validar, guardar el CSV y generar el tablero
+PYTHONPATH=src python -m ea3.pipeline
 
-## Flujo de trabajo con Git
+# Cambiar el número de páginas sin tocar el código
+PYTHONPATH=src python -m ea3.pipeline --pages 3
 
-- La rama `main` contiene la versión estable del proyecto.
-- Los cambios de documentación se trabajaron en la rama `mejora-readme` y se
-  integraron mediante una solicitud de extracción.
-- Los mensajes de commit describen la modificación realizada.
+# Regenerar el tablero con los datos ya guardados (sin salir a internet)
+PYTHONPATH=src python -m ea3.pipeline --desde-csv data/productos.csv
 
-## Limitaciones
+# Solo validar la calidad del dataset (lo que corre la integración continua)
+PYTHONPATH=src python -m ea3.pipeline --check
 
-- La extracción depende de la estructura actual del sitio web de Calzatodo y de la disponibilidad de los bloques JSON-LD utilizados como fuente de datos.
-- Cambios en la organización o nomenclatura de los campos publicados por el sitio podrían requerir ajustes en el cuaderno.
-- El proceso requiere acceso a internet y disponibilidad del sitio web durante la ejecución.
-- Los resultados reflejan la información disponible al momento de la ejecución y pueden variar con el tiempo debido a cambios en el catálogo o en los precios.
+# Pruebas y análisis de estilo
+pytest -q
+ruff check .
+```
 
-## Alcance
+El pipeline termina con un resumen en consola (productos, marcas, precios,
+completitud) y escribe `data/productos.csv`, `data/metricas.json` y
+`report/index.html`. Si los datos no pasan las reglas de calidad, sale con
+código 2 y no publica nada.
 
-La muestra corresponde a las dos primeras páginas de la categoría en un momento
-determinado, de modo que no representa la totalidad del catálogo ni permite comparar
-precios en el tiempo. El pipeline de integración continua con GitHub Actions y el
-despliegue continuo corresponden a la Unidad 3 del curso.
+## 5. Automatización con GitHub Actions
 
-## Referencias
+El repositorio tiene tres workflows; los tres se ven en la pestaña **Actions**.
 
-- [Calzatodo — Tenis deportivos para mujer](https://www.calzatodo.com.co/es/mujeres/tenis/deportivo)
-- [Pro Git (Chacon y Straub, 2014)](https://git-scm.com/book/es/v2)
-- [GitHub Docs — Solicitudes de extracción](https://docs.github.com/es/pull-requests)
-- [Beautiful Soup Documentation](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
+### `ci.yml` — integración continua
+
+Se dispara en **cada push y cada pull request**. Instala dependencias, corre
+`ruff check .`, ejecuta `pytest -q` y valida el dataset versionado con
+`python -m ea3.pipeline --check`. Si algo falla, el check queda en rojo.
+
+### `deploy.yml` — entrega continua
+
+Se dispara con **push a `main`** o a mano. Primero repite las pruebas; solo si
+pasan, regenera el tablero desde `data/productos.csv` y lo publica en GitHub
+Pages con `actions/upload-pages-artifact` y `actions/deploy-pages`. La URL
+pública queda en el job y en la pestaña **Deployments**.
+
+### `scrape.yml` — extracción programada
+
+Corre **todos los miércoles a las 19:00 UTC** (2:00 p. m. de Colombia) y también
+con `workflow_dispatch`. Valida la vigencia del curso, ejecuta el pipeline contra
+el sitio real, versiona `data/productos.csv`, `data/metricas.json` y
+`report/index.html`, y vuelve a desplegar el tablero. La ejecución se detiene
+cuando la fecha supera `EA3_VIGENCIA_HASTA`.
+
+**Variables y secretos.** Los valores del comportamiento (`EA3_PAGES`,
+`EA3_VIGENCIA_HASTA`) se leen de *Settings → Secrets and variables → Actions →
+Variables*. El token para hacer push lo genera GitHub en cada ejecución
+(`secrets.GITHUB_TOKEN`), así que **no hay credenciales guardadas en el
+repositorio**; el workflow lo usa solo en el paso de `git push`. Los permisos
+mínimos están declarados en cada archivo (`contents`, `pages`, `id-token`).
+
+## 6. Despliegue
+
+El tablero se publica en **GitHub Pages** como sitio estático:
+
+- URL: **https://estefa-m.github.io/EA2_Web_Scraping/**
+- Origen: la carpeta `report/` del repositorio, empaquetada por el workflow
+  `deploy.yml`. `actions/configure-pages` habilita Pages con origen
+  *GitHub Actions* la primera vez.
+- Entorno: `github-pages`, con la URL expuesta en el job de despliegue.
+- No requiere servidor, base de datos ni variables secretas en el sitio: el HTML
+  se genera en el pipeline y se sirve tal cual.
+- Cada push a `main` y cada ejecución semanal reemplazan el sitio por la versión
+  con los datos más recientes.
+
+## 7. Resultados (ejecución del 26/11/2026)
+
+| Métrica | Resultado |
+|---|---|
+| Publicaciones únicas | 40 |
+| Marcas | 3 (Throwing 27, Skechers 8, New Balance 5) |
+| Precio mínimo | $ 107.920 |
+| Precio máximo | $ 279.920 |
+| Precio promedio | $ 151.168 |
+| Precio mediano | $ 111.920 |
+| Completitud de campos | 100 % |
+| Publicaciones entre $150.000 y $350.000 | 13 de 40 |
+
+Las cifras no están escritas a mano: salen de `data/metricas.json`, que genera el
+mismo pipeline que alimenta el tablero. La lectura del catálogo es clara: el 67 %
+de las publicaciones está por debajo de $150.000 y la mediana ($ 111.920) es muy
+inferior al promedio ($ 151.168), porque unas pocas referencias de marca suben el
+promedio.
+
+## 8. Historial de evidencias
+
+| Evidencia | Qué aportó | Dónde está |
+|---|---|---|
+| EA1 | Primera extracción de Calzatodo (24 publicaciones, JSON-LD y paginación) | `calzatodo_ea2.ipynb` (sección 1) |
+| EA2 | Limpieza, métricas de calidad y control de versiones con Git/GitHub | `calzatodo_ea2.ipynb` y su CSV |
+| EA3 | Pipeline CI/CD, pruebas, tablero y despliegue en la nube | `src/`, `tests/`, `report/`, `.github/workflows/` |
+
+## 9. Limitaciones
+
+- La extracción depende de que Calzatodo siga publicando el bloque JSON-LD
+  `ItemList`; un cambio de estructura exige ajustar `parsear_item_list`.
+- La muestra son las dos primeras páginas de una categoría, no todo el catálogo.
+- Los precios son una foto del momento de la ejecución; el histórico se puede
+  reconstruir con los commits de `data/productos.csv`.
+- GitHub Pages sirve contenido público: el tablero no debe incluir datos
+  personales.
+- La ejecución programada se detiene el 9 de diciembre de 2026, cuando cierra la
+  ventana del curso.
+
+## 10. Referencias
+
+Chacon, S. y Straub, B. (2014). *Pro Git* (2.ª ed.). Apress.
+https://git-scm.com/book/es/v2
+
+GitHub. (2026). *Documentación de GitHub Actions*.
+https://docs.github.com/es/actions
+
+GitHub. (2026). *Publicar sitios con GitHub Pages*.
+https://docs.github.com/es/pages
+
+Richardson, L. (2024). *Beautiful Soup Documentation*.
+https://www.crummy.com/software/BeautifulSoup/bs4/doc/
+
+The pandas development team. (2026). *pandas documentation*.
+https://pandas.pydata.org/docs/
