@@ -70,8 +70,6 @@ jobs:
 
       - name: Preparar GitHub Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Empaquetar el sitio actualizado
         uses: actions/upload-pages-artifact@v3
